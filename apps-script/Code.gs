@@ -4,10 +4,19 @@
  * guardá, y luego Implementar > Nueva implementación > Aplicación web.
  *
  * La primera vez crea solo la pestaña "Traslados" con sus encabezados.
+ *
+ * IMPORTANTE: el TOKEN de abajo debe ser idéntico al de tu config.js.
  */
+
+const TOKEN = 'hdp_53267e0e5bd29126aa70e5ee32354616';
 
 const SHEET_NAME = 'Traslados';
 const HEADERS = ['id', 'fecha', 'huesped', 'hotel', 'tipo', 'hora', 'pax', 'estado', 'notas'];
+
+function authed_(e, body) {
+  const t = (body && body.token) || (e && e.parameter && e.parameter.token) || '';
+  return t === TOKEN;
+}
 
 function getSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -51,43 +60,40 @@ function findRowIndex_(sh, id) {
   if (last < 2) return -1;
   const ids = sh.getRange(2, 1, last - 1, 1).getValues();
   for (let i = 0; i < ids.length; i++) {
-    if (String(ids[i][0]) === String(id)) return i + 2; // fila real en la hoja
+    if (String(ids[i][0]) === String(id)) return i + 2;
   }
   return -1;
 }
 
-// Leer todos los traslados
 function doGet(e) {
+  if (!authed_(e, null)) return json_({ ok: false, error: 'No autorizado' });
   return json_({ ok: true, data: readAll_() });
 }
 
-// Agregar / actualizar / borrar
 function doPost(e) {
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
     const body = JSON.parse(e.postData.contents);
+    if (!authed_(e, body)) return json_({ ok: false, error: 'No autorizado' });
     const sh = getSheet_();
 
     if (body.action === 'add') {
       sh.appendRow(rowToArray_(body.row));
       return json_({ ok: true, row: body.row });
     }
-
     if (body.action === 'update') {
       const idx = findRowIndex_(sh, body.row.id);
       if (idx === -1) return json_({ ok: false, error: 'No encontré ese traslado' });
       sh.getRange(idx, 1, 1, HEADERS.length).setValues([rowToArray_(body.row)]);
       return json_({ ok: true, row: body.row });
     }
-
     if (body.action === 'delete') {
       const idx = findRowIndex_(sh, body.id);
       if (idx === -1) return json_({ ok: false, error: 'No encontré ese traslado' });
       sh.deleteRow(idx);
       return json_({ ok: true });
     }
-
     return json_({ ok: false, error: 'Acción desconocida' });
   } catch (err) {
     return json_({ ok: false, error: String(err) });

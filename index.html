@@ -195,6 +195,7 @@
 // ===================== CONFIGURACIÓN =====================
 // Pegá aquí la URL de tu Web App de Apps Script (debe terminar en /exec)
 const API_URL = (window.HDP_CONFIG && window.HDP_CONFIG.API_URL) || "PEGA_AQUI_TU_URL_/exec";
+const TOKEN = (window.HDP_CONFIG && window.HDP_CONFIG.TOKEN) || "";
 // =========================================================
 const LIVE = !!API_URL && !API_URL.includes("PEGA_AQUI");
 const DEMO_MSG = "Modo demo: pegá tu URL de Apps Script en el código (API_URL) para guardar en Google Sheets. Por ahora se guarda solo en este navegador.";
@@ -214,7 +215,7 @@ function setStatus(msg,err){const n=$("savenote");n.textContent=msg;n.style.colo
 
 // ---------- capa de datos ----------
 async function api(payload){
-  const res=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload),redirect:"follow"});
+  const res=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({token:TOKEN},payload)),redirect:"follow"});
   const j=await res.json();
   if(!j.ok) throw new Error(j.error||"Error del servidor");
   return j;
@@ -223,8 +224,9 @@ async function load(){
   if(LIVE){
     try{
       setStatus("Cargando desde Google Sheets…");
-      const res=await fetch(API_URL,{method:"GET",redirect:"follow"});
+      const res=await fetch(API_URL+"?token="+encodeURIComponent(TOKEN),{method:"GET",redirect:"follow"});
       const j=await res.json();
+      if(j.ok===false) throw new Error(j.error||"No autorizado");
       data=(j.data||[]).map(r=>({...r,pax:Number(r.pax)||1}));
       setStatus("Conectado a tu hoja de Google Sheets.");
     }catch(e){
