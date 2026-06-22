@@ -1,11 +1,10 @@
 /**
  * Backend de Traslados Hoteles de Petén sobre Google Sheets.
- * Pegá este código en Extensiones > Apps Script de una hoja nueva,
- * guardá, y luego Implementar > Nueva implementación > Aplicación web.
+ * Pegá este código en Extensiones > Apps Script de tu hoja, guardá,
+ * y redeployá: Implementar > Administrar implementaciones >
+ * editar (lápiz) > Versión: Nueva versión > Implementar.
  *
- * La primera vez crea solo la pestaña "Traslados" con sus encabezados.
- *
- * IMPORTANTE: el TOKEN de abajo debe ser idéntico al de tu config.js.
+ * IMPORTANTE: el TOKEN debe ser idéntico al de tu config.js.
  */
 
 const TOKEN = 'hdp_53267e0e5bd29126aa70e5ee32354616';
@@ -65,19 +64,12 @@ function findRowIndex_(sh, id) {
   return -1;
 }
 
-function doGet(e) {
-  if (!authed_(e, null)) return json_({ ok: false, error: 'No autorizado' });
-  return json_({ ok: true, data: readAll_() });
-}
-
-function doPost(e) {
+// Ejecuta una escritura (add / update / delete) con bloqueo para evitar choques
+function handleWrite_(body) {
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    const body = JSON.parse(e.postData.contents);
-    if (!authed_(e, body)) return json_({ ok: false, error: 'No autorizado' });
     const sh = getSheet_();
-
     if (body.action === 'add') {
       sh.appendRow(rowToArray_(body.row));
       return json_({ ok: true, row: body.row });
@@ -99,5 +91,25 @@ function doPost(e) {
     return json_({ ok: false, error: String(err) });
   } finally {
     lock.releaseLock();
+  }
+}
+
+// Lectura, y también escritura cuando llega ?payload= (camino confiable para el navegador)
+function doGet(e) {
+  if (!authed_(e, null)) return json_({ ok: false, error: 'No autorizado' });
+  if (e && e.parameter && e.parameter.payload) {
+    return handleWrite_(JSON.parse(e.parameter.payload));
+  }
+  return json_({ ok: true, data: readAll_() });
+}
+
+// Se mantiene por compatibilidad si el POST sí llega
+function doPost(e) {
+  try {
+    const body = JSON.parse(e.postData.contents);
+    if (!authed_(e, body)) return json_({ ok: false, error: 'No autorizado' });
+    return handleWrite_(body);
+  } catch (err) {
+    return json_({ ok: false, error: String(err) });
   }
 }

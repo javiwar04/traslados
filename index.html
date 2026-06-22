@@ -215,7 +215,8 @@ function setStatus(msg,err){const n=$("savenote");n.textContent=msg;n.style.colo
 
 // ---------- capa de datos ----------
 async function api(payload){
-  const res=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({token:TOKEN},payload)),redirect:"follow"});
+  const url=API_URL+"?token="+encodeURIComponent(TOKEN)+"&payload="+encodeURIComponent(JSON.stringify(payload));
+  const res=await fetch(url,{method:"GET",redirect:"follow"});
   const j=await res.json();
   if(!j.ok) throw new Error(j.error||"Error del servidor");
   return j;
@@ -317,7 +318,8 @@ async function delRow(id){
   try{
     if(LIVE) await api({action:"delete",id:id});
     data=data.filter(x=>x.id!==id); persistDemo(); render();
-  }catch(e){ alert("No se pudo borrar: "+e.message); }
+    if(LIVE) setStatus("✓ Traslado borrado de la hoja.");
+  }catch(e){ setStatus("No se pudo borrar: "+e.message,true); }
 }
 async function saveRow(){
   if(busy) return;
@@ -334,7 +336,8 @@ async function saveRow(){
     if(isEdit) data=data.map(x=>x.id===row.id?row:x); else data.push(row);
     persistDemo();
     $("form").classList.remove("open"); dateInput.value=row.fecha; render();
-  }catch(e){ alert("No se pudo guardar: "+e.message); }
+    if(LIVE) setStatus("✓ Guardado en tu hoja de Google Sheets.");
+  }catch(e){ setStatus("No se pudo guardar: "+e.message,true); }
   finally{ busy=false; btn.textContent="Guardar traslado"; btn.disabled=false; editId=null; }
 }
 function exportCSV(){
