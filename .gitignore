@@ -1,0 +1,7 @@
+# Configuración local con la URL del backend — nunca subir
+config.js
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.log

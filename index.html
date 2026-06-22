@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traslados · Hoteles de Petén</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0C1726; --panel:#14233D; --panel2:#1A2E4E; --line:#26395A;
+    --gold:#D6A656; --gold-soft:#ECCB86;
+    --text:#EAF0F9; --muted:#90A2C0;
+    --teal:#4FB6A3; --coral:#E2904C;
+    --blue:#5B9BD5; --red:#C45B5B; --grey:#6E7E97;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:
+      radial-gradient(1100px 500px at 80% -10%, rgba(214,166,86,.10), transparent 60%),
+      radial-gradient(900px 600px at -10% 110%, rgba(79,182,163,.07), transparent 60%),
+      var(--bg);
+    color:var(--text); min-height:100vh; padding:22px; line-height:1.45;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  header{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:22px}
+  .brand .mark{font-family:'Playfair Display',serif;font-size:13px;letter-spacing:.42em;color:var(--gold);text-transform:uppercase;font-weight:600}
+  .brand h1{font-family:'Playfair Display',serif;font-weight:600;font-size:30px;letter-spacing:.01em;margin-top:2px}
+  .brand h1 span{color:var(--muted);font-style:italic;font-weight:500}
+  .datenav{display:flex;align-items:center;gap:8px}
+  .datenav input[type=date]{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:9px 12px;border-radius:10px;font-family:inherit;font-size:14px;font-weight:500;color-scheme:dark}
+  .iconbtn,.todaybtn{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:10px;cursor:pointer;font-family:inherit;font-size:14px;transition:.15s}
+  .iconbtn{width:38px;height:38px;font-size:17px;line-height:1}
+  .todaybtn{padding:9px 14px;font-weight:600}
+  .iconbtn:hover,.todaybtn:hover{border-color:var(--gold);color:var(--gold-soft)}
+  .dash{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:18px;padding:20px 22px;margin-bottom:20px}
+  .stats{display:flex;gap:26px;flex-wrap:wrap;margin-bottom:20px}
+  .stat{display:flex;flex-direction:column;gap:3px}
+  .stat .n{font-family:'Playfair Display',serif;font-size:34px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+  .stat .l{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+  .stat.entran .n{color:var(--teal)} .stat.salen .n{color:var(--coral)}
+  .stat .sub{font-size:12px;color:var(--muted)}
+  .stat.prox .n{font-size:26px;color:var(--gold-soft)}
+  .timeline-h{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;gap:16px;align-items:center}
+  .legend{display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;font-size:11px}
+  .legend .dot{width:9px;height:9px;border-radius:50%}
+  .ribbon{position:relative;height:96px;border-radius:12px;background:rgba(7,16,30,.45);border:1px solid var(--line);overflow:hidden}
+  .axis{position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line)}
+  .tick{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:10px;color:#5d6f8e;font-variant-numeric:tabular-nums;background:var(--bg);padding:0 4px}
+  .pt{position:absolute;transform:translate(-50%,-50%);width:13px;height:13px;border-radius:50%;border:2px solid var(--bg);cursor:default;transition:.15s}
+  .pt:hover{transform:translate(-50%,-50%) scale(1.45);z-index:5}
+  .pt.arr{background:var(--teal)} .pt.dep{background:var(--coral)}
+  .ribbon-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#5d6f8e;font-size:13px}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .addbtn{background:var(--gold);color:#1a1304;border:none;padding:11px 18px;border-radius:11px;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;transition:.15s}
+  .addbtn:hover{background:var(--gold-soft)}
+  .addbtn:disabled{opacity:.6;cursor:default}
+  .ghost{background:transparent;border:1px solid var(--line);color:var(--muted);padding:10px 15px;border-radius:11px;font-family:inherit;font-weight:600;font-size:13px;cursor:pointer;transition:.15s}
+  .ghost:hover{border-color:var(--gold);color:var(--gold-soft)}
+  .form{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:18px;display:none}
+  .form.open{display:block}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field.wide{grid-column:span 2}
+  .field label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .field input,.field select{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:9px;font-family:inherit;font-size:14px;color-scheme:dark}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--gold)}
+  .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{flex:1;background:var(--panel2);border:none;color:var(--muted);padding:10px;font-family:inherit;font-weight:600;font-size:13px;cursor:pointer;transition:.15s}
+  .seg button.on{color:#1a1304}
+  .seg button.on[data-t="Llegada"]{background:var(--teal)}
+  .seg button.on[data-t="Salida"]{background:var(--coral)}
+  .formfoot{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+  .tablecard{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:720px}
+  th{text-align:left;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:14px 14px;border-bottom:1px solid var(--line);background:var(--panel2)}
+  td{padding:13px 14px;border-bottom:1px solid rgba(38,57,90,.5);font-size:14px;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:rgba(214,166,86,.05)}
+  .hora{font-family:'Playfair Display',serif;font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+  .dest-air{color:var(--coral)} .dest-hotel{color:var(--teal)}
+  .pax{font-variant-numeric:tabular-nums;font-weight:600;text-align:center}
+  .badge{display:inline-block;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+  .b-Pendiente{background:rgba(214,166,86,.16);color:var(--gold-soft)}
+  .b-Confirmado{background:rgba(79,182,163,.16);color:var(--teal)}
+  .b-Enruta{background:rgba(91,155,213,.18);color:var(--blue)}
+  .b-Completado{background:rgba(110,126,151,.18);color:#aab8cf}
+  .b-Cancelado{background:rgba(196,91,91,.16);color:#e08a8a}
+  tr.done td:not(.actcell){opacity:.5}
+  .notes{color:var(--muted);font-size:13px;max-width:220px}
+  .delbtn{background:transparent;border:none;color:#5d6f8e;cursor:pointer;font-size:16px;padding:4px 8px;border-radius:7px;transition:.15s}
+  .delbtn:hover{color:var(--red);background:rgba(196,91,91,.12)}
+  .editbtn{background:transparent;border:none;color:#5d6f8e;cursor:pointer;font-size:14px;padding:4px 8px;border-radius:7px;transition:.15s}
+  .editbtn:hover{color:var(--gold-soft);background:rgba(214,166,86,.12)}
+  .empty{padding:46px 20px;text-align:center;color:var(--muted)}
+  .empty b{color:var(--text);font-family:'Playfair Display',serif;font-size:18px;display:block;margin-bottom:6px;font-weight:600}
+  .fecha-cell{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .savenote{font-size:12px;color:#5d6f8e;text-align:center;margin-top:14px;min-height:16px}
+  @media(max-width:640px){
+    body{padding:14px}
+    .grid{grid-template-columns:1fr 1fr}
+    .field.wide{grid-column:span 2}
+    .brand h1{font-size:24px}
+    .stats{gap:18px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="mark">Hoteles de Petén</div>
+      <h1>Traslados <span>del día</span></h1>
+    </div>
+    <div class="datenav">
+      <button class="iconbtn" id="prev" title="Día anterior">‹</button>
+      <input type="date" id="date">
+      <button class="iconbtn" id="next" title="Día siguiente">›</button>
+      <button class="todaybtn" id="today">Hoy</button>
+    </div>
+  </header>
+
+  <section class="dash">
+    <div class="stats">
+      <div class="stat entran"><span class="n" id="s-entran">0</span><span class="l">Entran hoy</span><span class="sub">llegan al hotel</span></div>
+      <div class="stat salen"><span class="n" id="s-salen">0</span><span class="l">Salen hoy</span><span class="sub">van al aeropuerto</span></div>
+      <div class="stat"><span class="n" id="s-tras">0</span><span class="l">Traslados</span><span class="sub">programados</span></div>
+      <div class="stat prox"><span class="n" id="s-prox">—</span><span class="l">Próxima recogida</span><span class="sub" id="s-prox-sub">sin pendientes</span></div>
+    </div>
+    <div class="timeline-h">
+      <span>Línea del día · 5:00 – 23:00</span>
+      <span class="legend"><span class="dot" style="background:var(--teal)"></span>Llegada</span>
+      <span class="legend"><span class="dot" style="background:var(--coral)"></span>Salida</span>
+    </div>
+    <div class="ribbon" id="ribbon"></div>
+  </section>
+
+  <div class="toolbar">
+    <button class="addbtn" id="toggleForm">+ Agregar traslado</button>
+    <div style="display:flex;gap:10px">
+      <button class="ghost" id="refreshBtn">↻ Actualizar</button>
+      <button class="ghost" id="exportBtn">⇩ Exportar CSV</button>
+    </div>
+  </div>
+
+  <div class="form" id="form">
+    <div class="grid">
+      <div class="field"><label>Fecha</label><input type="date" id="f-fecha"></div>
+      <div class="field wide"><label>Huésped</label><input type="text" id="f-huesped" placeholder="Nombre del huésped o grupo"></div>
+      <div class="field"><label>Pax</label><input type="number" id="f-pax" min="1" value="1"></div>
+      <div class="field"><label>Hotel</label>
+        <select id="f-hotel">
+          <option>Casona de la Isla</option><option>Casona del Lago</option><option>Hotel Petén</option>
+          <option>Casa Turquesa</option><option>Casazul</option><option>Villa de Lago</option>
+        </select>
+      </div>
+      <div class="field"><label>Tipo</label>
+        <div class="seg" id="seg">
+          <button type="button" data-t="Llegada" class="on">Llegada</button>
+          <button type="button" data-t="Salida">Salida</button>
+        </div>
+      </div>
+      <div class="field"><label>Hora recogida</label><input type="time" id="f-hora"></div>
+      <div class="field"><label>Estado</label>
+        <select id="f-estado">
+          <option>Pendiente</option><option>Confirmado</option><option>En ruta</option><option>Completado</option><option>Cancelado</option>
+        </select>
+      </div>
+      <div class="field wide" style="grid-column:span 4"><label>Notas</label><input type="text" id="f-notas" placeholder="Maletas, vuelo, idioma, peticiones especiales…"></div>
+    </div>
+    <div class="formfoot">
+      <button class="ghost" id="cancelBtn">Cancelar</button>
+      <button class="addbtn" id="saveBtn">Guardar traslado</button>
+    </div>
+  </div>
+
+  <div class="tablecard">
+    <div class="scroll">
+      <table>
+        <thead><tr>
+          <th>Fecha</th><th>Hora</th><th>Huésped</th><th>Hotel</th><th>Destino</th><th>Pax</th><th>Estado</th><th>Notas</th><th></th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+  <p class="savenote" id="savenote"></p>
+</div>
+
+<script src="config.js"></script>
+<script>
+// ===================== CONFIGURACIÓN =====================
+// Pegá aquí la URL de tu Web App de Apps Script (debe terminar en /exec)
+const API_URL = (window.HDP_CONFIG && window.HDP_CONFIG.API_URL) || "PEGA_AQUI_TU_URL_/exec";
+// =========================================================
+const LIVE = !!API_URL && !API_URL.includes("PEGA_AQUI");
+const DEMO_MSG = "Modo demo: pegá tu URL de Apps Script en el código (API_URL) para guardar en Google Sheets. Por ahora se guarda solo en este navegador.";
+
+const HOTELS=["Casona de la Isla","Casona del Lago","Hotel Petén","Casa Turquesa","Casazul","Villa de Lago"];
+const KEY="hdp_traslados_v1";
+let data=[], editId=null, tipo="Llegada", busy=false;
+
+const $=id=>document.getElementById(id);
+const dateInput=$("date");
+
+function todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function destino(row){ return row.tipo==="Salida" ? "Aeropuerto FRS" : row.hotel; }
+function fmtFecha(s){const p=s.split("-");return p[2]+"/"+p[1];}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function setStatus(msg,err){const n=$("savenote");n.textContent=msg;n.style.color=err?"#e08a8a":"#5d6f8e";}
+
+// ---------- capa de datos ----------
+async function api(payload){
+  const res=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload),redirect:"follow"});
+  const j=await res.json();
+  if(!j.ok) throw new Error(j.error||"Error del servidor");
+  return j;
+}
+async function load(){
+  if(LIVE){
+    try{
+      setStatus("Cargando desde Google Sheets…");
+      const res=await fetch(API_URL,{method:"GET",redirect:"follow"});
+      const j=await res.json();
+      data=(j.data||[]).map(r=>({...r,pax:Number(r.pax)||1}));
+      setStatus("Conectado a tu hoja de Google Sheets.");
+    }catch(e){
+      data=[];
+      setStatus("No pude conectar con la hoja. Revisá que API_URL termine en /exec y que el acceso sea «Cualquier persona». ("+e.message+")",true);
+    }
+    return;
+  }
+  try{const r=localStorage.getItem(KEY); if(r){data=JSON.parse(r);setStatus(DEMO_MSG);return;}}catch(e){}
+  const t=todayStr();
+  data=[
+    {id:"1",fecha:t,huesped:"Familia López",hotel:"Casa Turquesa",tipo:"Llegada",hora:"13:50",pax:3,estado:"Confirmado",notas:"2 maletas grandes · vuelo TAG 13:30"},
+    {id:"2",fecha:t,huesped:"Sr. Pérez",hotel:"Casona del Lago",tipo:"Salida",hora:"06:15",pax:2,estado:"Pendiente",notas:"Vuelo Avianca 07:45 · confirmar 1 día antes"},
+    {id:"3",fecha:t,huesped:"Ms. Carter",hotel:"Casazul",tipo:"Salida",hora:"16:50",pax:1,estado:"Pendiente",notas:"Vuelo TAG 18:20"},
+    {id:"4",fecha:t,huesped:"Grupo Müller",hotel:"Hotel Petén",tipo:"Llegada",hora:"18:00",pax:4,estado:"Confirmado",notas:"Recoger en FRS"}
+  ];
+  try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}
+  setStatus(DEMO_MSG);
+}
+function persistDemo(){ if(!LIVE){try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}} }
+
+// ---------- render ----------
+function pct(mins){return Math.max(2,Math.min(98,(mins-300)/(1380-300)*100));}
+function render(){
+  const sel=dateInput.value;
+  const rows=data.filter(r=>r.fecha===sel).sort((a,b)=>a.hora.localeCompare(b.hora));
+  const entran=rows.filter(r=>r.tipo==="Llegada"&&r.estado!=="Cancelado").reduce((s,r)=>s+ +r.pax,0);
+  const salen=rows.filter(r=>r.tipo==="Salida"&&r.estado!=="Cancelado").reduce((s,r)=>s+ +r.pax,0);
+  $("s-entran").textContent=entran; $("s-salen").textContent=salen;
+  $("s-tras").textContent=rows.filter(r=>r.estado!=="Cancelado").length;
+  const pend=rows.filter(r=>r.estado!=="Completado"&&r.estado!=="Cancelado").sort((a,b)=>a.hora.localeCompare(b.hora));
+  if(pend.length){$("s-prox").textContent=pend[0].hora;$("s-prox-sub").textContent=pend[0].huesped;}
+  else{$("s-prox").textContent="—";$("s-prox-sub").textContent="sin pendientes";}
+
+  const rb=$("ribbon"); rb.innerHTML='<div class="axis"></div>';
+  [6,9,12,15,18,21].forEach(h=>{const t=document.createElement("div");t.className="tick";t.style.left=pct(h*60)+"%";t.textContent=String(h).padStart(2,"0");rb.appendChild(t);});
+  const active=rows.filter(r=>r.estado!=="Cancelado");
+  if(!active.length) rb.insertAdjacentHTML("beforeend",'<div class="ribbon-empty">Sin traslados este día</div>');
+  active.forEach(r=>{
+    const p=r.hora.split(":").map(Number); const mins=p[0]*60+p[1];
+    const el=document.createElement("div");
+    el.className="pt "+(r.tipo==="Llegada"?"arr":"dep");
+    el.style.left=pct(mins)+"%"; el.style.top=(r.tipo==="Llegada"?32:68)+"%";
+    el.title=r.hora+" · "+r.huesped+" · "+r.pax+" pax · "+(r.tipo==="Llegada"?"llega a "+r.hotel:"sale al aeropuerto");
+    rb.appendChild(el);
+  });
+
+  const tb=$("tbody");
+  if(!rows.length){tb.innerHTML='<tr><td colspan="9"><div class="empty"><b>Sin traslados este día</b>Agregá el primero con el botón de arriba.</div></td></tr>';return;}
+  tb.innerHTML=rows.map(r=>{
+    const dest=destino(r);
+    const destCls=r.tipo==="Salida"?"dest-air":"dest-hotel";
+    const bcls="b-"+r.estado.replace(" ","");
+    return '<tr class="'+(r.estado==='Completado'?'done':'')+'">'+
+      '<td class="fecha-cell">'+fmtFecha(r.fecha)+'</td>'+
+      '<td><span class="hora">'+r.hora+'</span></td>'+
+      '<td>'+esc(r.huesped)+'</td>'+
+      '<td>'+esc(r.hotel)+'</td>'+
+      '<td class="'+destCls+'">'+esc(dest)+'</td>'+
+      '<td class="pax">'+r.pax+'</td>'+
+      '<td><span class="badge '+bcls+'">'+r.estado+'</span></td>'+
+      '<td class="notes">'+esc(r.notas||"")+'</td>'+
+      '<td class="actcell" style="white-space:nowrap;text-align:right">'+
+        '<button class="editbtn" onclick="editRow(\''+r.id+'\')" title="Editar">✎</button>'+
+        '<button class="delbtn" onclick="delRow(\''+r.id+'\')" title="Borrar">✕</button>'+
+      '</td></tr>';
+  }).join("");
+}
+
+// ---------- formulario ----------
+function setTipo(t){tipo=t;document.querySelectorAll("#seg button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));}
+function openForm(){
+  $("form").classList.add("open");
+  editId=null; $("f-fecha").value=dateInput.value; $("f-huesped").value=""; $("f-pax").value=1;
+  $("f-hotel").value=HOTELS[0]; setTipo("Llegada"); $("f-hora").value=""; $("f-estado").value="Pendiente"; $("f-notas").value="";
+  $("f-huesped").focus();
+}
+function editRow(id){
+  const r=data.find(x=>x.id===id); if(!r)return;
+  editId=id; $("form").classList.add("open");
+  $("f-fecha").value=r.fecha;$("f-huesped").value=r.huesped;$("f-pax").value=r.pax;$("f-hotel").value=r.hotel;
+  setTipo(r.tipo);$("f-hora").value=r.hora;$("f-estado").value=r.estado;$("f-notas").value=r.notas||"";
+  $("form").scrollIntoView({behavior:"smooth",block:"center"});
+}
+async function delRow(id){
+  const r=data.find(x=>x.id===id); if(!r)return;
+  if(!confirm("¿Borrar el traslado de "+r.huesped+"?")) return;
+  try{
+    if(LIVE) await api({action:"delete",id:id});
+    data=data.filter(x=>x.id!==id); persistDemo(); render();
+  }catch(e){ alert("No se pudo borrar: "+e.message); }
+}
+async function saveRow(){
+  if(busy) return;
+  const huesped=$("f-huesped").value.trim();
+  if(!huesped){$("f-huesped").focus();return;}
+  if(!$("f-hora").value){$("f-hora").focus();return;}
+  const isEdit=!!editId;
+  const row={id:editId||String(Date.now()),fecha:$("f-fecha").value||dateInput.value,huesped:huesped,
+    hotel:$("f-hotel").value,tipo:tipo,hora:$("f-hora").value,pax:Math.max(1,+$("f-pax").value||1),
+    estado:$("f-estado").value,notas:$("f-notas").value.trim()};
+  busy=true; const btn=$("saveBtn"); btn.textContent="Guardando…"; btn.disabled=true;
+  try{
+    if(LIVE) await api({action:isEdit?"update":"add",row:row});
+    if(isEdit) data=data.map(x=>x.id===row.id?row:x); else data.push(row);
+    persistDemo();
+    $("form").classList.remove("open"); dateInput.value=row.fecha; render();
+  }catch(e){ alert("No se pudo guardar: "+e.message); }
+  finally{ busy=false; btn.textContent="Guardar traslado"; btn.disabled=false; editId=null; }
+}
+function exportCSV(){
+  const sel=dateInput.value;
+  const rows=data.filter(r=>r.fecha===sel).sort((a,b)=>a.hora.localeCompare(b.hora));
+  const head=["Fecha","Hora recogida","Huésped","Hotel","Destino","Pax","Estado","Notas"];
+  const lines=[head.join(",")].concat(rows.map(r=>[r.fecha,r.hora,r.huesped,r.hotel,destino(r),r.pax,r.estado,(r.notas||"")].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")));
+  const blob=new Blob(["\ufeff"+lines.join("\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="traslados_"+sel+".csv";a.click();
+}
+
+// ---------- wiring ----------
+dateInput.value=todayStr();
+function shift(d){const dt=new Date(dateInput.value+"T12:00");dt.setDate(dt.getDate()+d);dateInput.value=dt.toISOString().slice(0,10);render();}
+$("prev").onclick=()=>shift(-1); $("next").onclick=()=>shift(1);
+$("today").onclick=()=>{dateInput.value=todayStr();render();};
+dateInput.onchange=render;
+$("toggleForm").onclick=()=>{const f=$("form");f.classList.contains("open")?f.classList.remove("open"):openForm();};
+$("cancelBtn").onclick=()=>{$("form").classList.remove("open");editId=null;};
+$("saveBtn").onclick=saveRow;
+$("exportBtn").onclick=exportCSV;
+$("refreshBtn").onclick=async()=>{await load();render();};
+document.querySelectorAll("#seg button").forEach(b=>b.onclick=()=>setTipo(b.dataset.t));
+window.editRow=editRow; window.delRow=delRow;
+
+(async()=>{ await load(); render(); })();
+</script>
+</body>
+</html>
