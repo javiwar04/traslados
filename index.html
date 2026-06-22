@@ -4,9 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Traslados · Hoteles de Petén</title>
+
+// Cambios pequeños
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
 <style>
   :root{
     --bg:#0C1726; --panel:#14233D; --panel2:#1A2E4E; --line:#26395A;
@@ -43,7 +46,7 @@
   .stat.entran .n{color:var(--teal)} .stat.salen .n{color:var(--coral)}
   .stat .sub{font-size:12px;color:var(--muted)}
   .stat.prox .n{font-size:26px;color:var(--gold-soft)}
-  .timeline-h{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;gap:16px;align-items:center}
+  .timeline-h{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
   .legend{display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal;font-size:11px}
   .legend .dot{width:9px;height:9px;border-radius:50%}
   .ribbon{position:relative;height:96px;border-radius:12px;background:rgba(7,16,30,.45);border:1px solid var(--line);overflow:hidden}
@@ -154,7 +157,7 @@
       <div class="field"><label>Hotel</label>
         <select id="f-hotel">
           <option>Casona de la Isla</option><option>Casona del Lago</option><option>Hotel Petén</option>
-          <option>Casa Turquesa</option><option>Casazul</option><option>Villa de Lago</option>
+          <option>Casa Turquesa</option><option>Casazul</option><option>Villa del Lago</option>
         </select>
       </div>
       <div class="field"><label>Tipo</label>
@@ -190,17 +193,13 @@
   <p class="savenote" id="savenote"></p>
 </div>
 
-<script src="config.js"></script>
 <script>
-// ===================== CONFIGURACIÓN =====================
-// Pegá aquí la URL de tu Web App de Apps Script (debe terminar en /exec)
-const API_URL = (window.HDP_CONFIG && window.HDP_CONFIG.API_URL) || "PEGA_AQUI_TU_URL_/exec";
-const TOKEN = (window.HDP_CONFIG && window.HDP_CONFIG.TOKEN) || "";
-// =========================================================
-const LIVE = !!API_URL && !API_URL.includes("PEGA_AQUI");
-const DEMO_MSG = "Modo demo: pegá tu URL de Apps Script en el código (API_URL) para guardar en Google Sheets. Por ahora se guarda solo en este navegador.";
+const API_URL = "https://script.google.com/macros/s/AKfycbzNLVkAtgqjkjbv5fzfZVffMuDGoqZtDon_jHACR2lvp4wOBNNmWVnh5gyCGOOSPIy4/exec";
+const TOKEN = "hdp_53267e0e5bd29126aa70e5ee32354616";
 
-const HOTELS=["Casona de la Isla","Casona del Lago","Hotel Petén","Casa Turquesa","Casazul","Villa de Lago"];
+const LIVE = !!API_URL && !API_URL.includes("PEGA_AQUI");
+const DEMO_MSG = "Modo demo: revisá API_URL/TOKEN. Por ahora se guarda solo en este navegador.";
+const HOTELS=["Casona de la Isla","Casona del Lago","Hotel Petén","Casa Turquesa","Casazul","Villa del Lago"];
 const KEY="hdp_traslados_v1";
 let data=[], editId=null, tipo="Llegada", busy=false;
 
@@ -208,69 +207,128 @@ const $=id=>document.getElementById(id);
 const dateInput=$("date");
 
 function todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
-function destino(row){ return row.tipo==="Salida" ? "Aeropuerto FRS" : row.hotel; }
-function fmtFecha(s){const p=s.split("-");return p[2]+"/"+p[1];}
-function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function destino(row){return row.tipo==="Salida" ? "Aeropuerto FRS" : row.hotel;}
+function fmtFecha(s){if(!s)return"";const p=String(s).split("-");return p.length===3?p[2]+"/"+p[1]:s;}
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function attr(s){return String(s??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;").replace(/[<>]/g,"");}
 function setStatus(msg,err){const n=$("savenote");n.textContent=msg;n.style.color=err?"#e08a8a":"#5d6f8e";}
 
-// ---------- capa de datos ----------
-async function api(payload){
-  const url=API_URL+"?token="+encodeURIComponent(TOKEN)+"&payload="+encodeURIComponent(JSON.stringify(payload));
-  const res=await fetch(url,{method:"GET",redirect:"follow"});
-  const j=await res.json();
-  if(!j.ok) throw new Error(j.error||"Error del servidor");
-  return j;
+function normalizeDate(v){
+  if(!v)return"";
+  const s=String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+  let m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m)return `${m[3]}-${String(m[2]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;
+  const d=new Date(s);
+  if(!isNaN(d.getTime()))return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  return s;
 }
+function normalizeTime(v){
+  if(!v)return"";
+  const s=String(v).trim();
+  let m=s.match(/^(\d{1,2}):(\d{2})/);
+  if(m)return String(m[1]).padStart(2,"0")+":"+m[2];
+  const d=new Date(s);
+  if(!isNaN(d.getTime()))return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  return s;
+}
+
+function api(payload=null){
+  return new Promise((resolve,reject)=>{
+    if(!LIVE){reject(new Error("API_URL no configurada"));return;}
+    const callbackName="__hdp_cb_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+    const params=new URLSearchParams();
+    params.set("token",TOKEN);
+    params.set("callback",callbackName);
+    if(payload)params.set("payload",JSON.stringify(payload));
+
+    const script=document.createElement("script");
+    const timer=setTimeout(()=>{
+      cleanup();
+      reject(new Error("Tiempo agotado. Revisá que Apps Script tenga soporte JSONP/callback."));
+    },15000);
+
+    function cleanup(){
+      clearTimeout(timer);
+      try{delete window[callbackName];}catch(e){window[callbackName]=undefined;}
+      if(script.parentNode)script.parentNode.removeChild(script);
+    }
+
+    window[callbackName]=function(response){
+      cleanup();
+      if(!response || response.ok===false){
+        reject(new Error(response?.error || "Error desconocido del servidor"));
+        return;
+      }
+      resolve(response);
+    };
+
+    script.onerror=function(){
+      cleanup();
+      reject(new Error("No se pudo conectar con Apps Script."));
+    };
+
+    script.src=API_URL+"?"+params.toString();
+    document.body.appendChild(script);
+  });
+}
+
 async function load(){
   if(LIVE){
     try{
       setStatus("Cargando desde Google Sheets…");
-      const res=await fetch(API_URL+"?token="+encodeURIComponent(TOKEN),{method:"GET",redirect:"follow"});
-      const j=await res.json();
-      if(j.ok===false) throw new Error(j.error||"No autorizado");
-      data=(j.data||[]).map(r=>({...r,pax:Number(r.pax)||1}));
+      const j=await api();
+      data=(j.data||[]).map(r=>({
+        id:String(r.id||""),
+        fecha:normalizeDate(r.fecha),
+        huesped:String(r.huesped||""),
+        hotel:String(r.hotel||""),
+        tipo:String(r.tipo||"Llegada"),
+        hora:normalizeTime(r.hora),
+        pax:Number(r.pax)||1,
+        estado:String(r.estado||"Pendiente"),
+        notas:String(r.notas||"")
+      })).filter(r=>r.id&&r.fecha&&r.hora);
       setStatus("Conectado a tu hoja de Google Sheets.");
     }catch(e){
       data=[];
-      setStatus("No pude conectar con la hoja. Revisá que API_URL termine en /exec y que el acceso sea «Cualquier persona». ("+e.message+")",true);
+      setStatus("No pude conectar con la hoja. "+e.message,true);
     }
     return;
   }
-  try{const r=localStorage.getItem(KEY); if(r){data=JSON.parse(r);setStatus(DEMO_MSG);return;}}catch(e){}
+
+  try{const r=localStorage.getItem(KEY);if(r){data=JSON.parse(r);setStatus(DEMO_MSG);return;}}catch(e){}
   const t=todayStr();
   data=[
     {id:"1",fecha:t,huesped:"Familia López",hotel:"Casa Turquesa",tipo:"Llegada",hora:"13:50",pax:3,estado:"Confirmado",notas:"2 maletas grandes · vuelo TAG 13:30"},
-    {id:"2",fecha:t,huesped:"Sr. Pérez",hotel:"Casona del Lago",tipo:"Salida",hora:"06:15",pax:2,estado:"Pendiente",notas:"Vuelo Avianca 07:45 · confirmar 1 día antes"},
-    {id:"3",fecha:t,huesped:"Ms. Carter",hotel:"Casazul",tipo:"Salida",hora:"16:50",pax:1,estado:"Pendiente",notas:"Vuelo TAG 18:20"},
-    {id:"4",fecha:t,huesped:"Grupo Müller",hotel:"Hotel Petén",tipo:"Llegada",hora:"18:00",pax:4,estado:"Confirmado",notas:"Recoger en FRS"}
+    {id:"2",fecha:t,huesped:"Sr. Pérez",hotel:"Casona del Lago",tipo:"Salida",hora:"06:15",pax:2,estado:"Pendiente",notas:"Vuelo Avianca 07:45 · confirmar 1 día antes"}
   ];
   try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}
   setStatus(DEMO_MSG);
 }
-function persistDemo(){ if(!LIVE){try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}} }
+function persistDemo(){if(!LIVE){try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}}}
 
-// ---------- render ----------
 function pct(mins){return Math.max(2,Math.min(98,(mins-300)/(1380-300)*100));}
 function render(){
   const sel=dateInput.value;
-  const rows=data.filter(r=>r.fecha===sel).sort((a,b)=>a.hora.localeCompare(b.hora));
-  const entran=rows.filter(r=>r.tipo==="Llegada"&&r.estado!=="Cancelado").reduce((s,r)=>s+ +r.pax,0);
-  const salen=rows.filter(r=>r.tipo==="Salida"&&r.estado!=="Cancelado").reduce((s,r)=>s+ +r.pax,0);
-  $("s-entran").textContent=entran; $("s-salen").textContent=salen;
+  const rows=data.filter(r=>normalizeDate(r.fecha)===sel).sort((a,b)=>normalizeTime(a.hora).localeCompare(normalizeTime(b.hora)));
+  const entran=rows.filter(r=>r.tipo==="Llegada"&&r.estado!=="Cancelado").reduce((s,r)=>s+Number(r.pax||0),0);
+  const salen=rows.filter(r=>r.tipo==="Salida"&&r.estado!=="Cancelado").reduce((s,r)=>s+Number(r.pax||0),0);
+  $("s-entran").textContent=entran;$("s-salen").textContent=salen;
   $("s-tras").textContent=rows.filter(r=>r.estado!=="Cancelado").length;
-  const pend=rows.filter(r=>r.estado!=="Completado"&&r.estado!=="Cancelado").sort((a,b)=>a.hora.localeCompare(b.hora));
+  const pend=rows.filter(r=>r.estado!=="Completado"&&r.estado!=="Cancelado").sort((a,b)=>normalizeTime(a.hora).localeCompare(normalizeTime(b.hora)));
   if(pend.length){$("s-prox").textContent=pend[0].hora;$("s-prox-sub").textContent=pend[0].huesped;}
   else{$("s-prox").textContent="—";$("s-prox-sub").textContent="sin pendientes";}
 
-  const rb=$("ribbon"); rb.innerHTML='<div class="axis"></div>';
+  const rb=$("ribbon");rb.innerHTML='<div class="axis"></div>';
   [6,9,12,15,18,21].forEach(h=>{const t=document.createElement("div");t.className="tick";t.style.left=pct(h*60)+"%";t.textContent=String(h).padStart(2,"0");rb.appendChild(t);});
   const active=rows.filter(r=>r.estado!=="Cancelado");
-  if(!active.length) rb.insertAdjacentHTML("beforeend",'<div class="ribbon-empty">Sin traslados este día</div>');
+  if(!active.length)rb.insertAdjacentHTML("beforeend",'<div class="ribbon-empty">Sin traslados este día</div>');
   active.forEach(r=>{
-    const p=r.hora.split(":").map(Number); const mins=p[0]*60+p[1];
+    const p=normalizeTime(r.hora).split(":").map(Number);const mins=p[0]*60+p[1];
     const el=document.createElement("div");
     el.className="pt "+(r.tipo==="Llegada"?"arr":"dep");
-    el.style.left=pct(mins)+"%"; el.style.top=(r.tipo==="Llegada"?32:68)+"%";
+    el.style.left=pct(mins)+"%";el.style.top=(r.tipo==="Llegada"?32:68)+"%";
     el.title=r.hora+" · "+r.huesped+" · "+r.pax+" pax · "+(r.tipo==="Llegada"?"llega a "+r.hotel:"sale al aeropuerto");
     rb.appendChild(el);
   });
@@ -280,79 +338,84 @@ function render(){
   tb.innerHTML=rows.map(r=>{
     const dest=destino(r);
     const destCls=r.tipo==="Salida"?"dest-air":"dest-hotel";
-    const bcls="b-"+r.estado.replace(" ","");
-    return '<tr class="'+(r.estado==='Completado'?'done':'')+'">'+
+    const bcls="b-"+String(r.estado).replace(/\s+/g,"");
+    return '<tr class="'+(r.estado==="Completado"?"done":"")+'">'+
       '<td class="fecha-cell">'+fmtFecha(r.fecha)+'</td>'+
-      '<td><span class="hora">'+r.hora+'</span></td>'+
+      '<td><span class="hora">'+esc(r.hora)+'</span></td>'+
       '<td>'+esc(r.huesped)+'</td>'+
       '<td>'+esc(r.hotel)+'</td>'+
       '<td class="'+destCls+'">'+esc(dest)+'</td>'+
-      '<td class="pax">'+r.pax+'</td>'+
-      '<td><span class="badge '+bcls+'">'+r.estado+'</span></td>'+
+      '<td class="pax">'+esc(r.pax)+'</td>'+
+      '<td><span class="badge '+bcls+'">'+esc(r.estado)+'</span></td>'+
       '<td class="notes">'+esc(r.notas||"")+'</td>'+
       '<td class="actcell" style="white-space:nowrap;text-align:right">'+
-        '<button class="editbtn" onclick="editRow(\''+r.id+'\')" title="Editar">✎</button>'+
-        '<button class="delbtn" onclick="delRow(\''+r.id+'\')" title="Borrar">✕</button>'+
+      '<button class="editbtn" onclick="editRow(\''+attr(r.id)+'\')" title="Editar">✎</button>'+
+      '<button class="delbtn" onclick="delRow(\''+attr(r.id)+'\')" title="Borrar">✕</button>'+
       '</td></tr>';
   }).join("");
 }
 
-// ---------- formulario ----------
 function setTipo(t){tipo=t;document.querySelectorAll("#seg button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));}
 function openForm(){
-  $("form").classList.add("open");
-  editId=null; $("f-fecha").value=dateInput.value; $("f-huesped").value=""; $("f-pax").value=1;
-  $("f-hotel").value=HOTELS[0]; setTipo("Llegada"); $("f-hora").value=""; $("f-estado").value="Pendiente"; $("f-notas").value="";
+  $("form").classList.add("open");editId=null;
+  $("f-fecha").value=dateInput.value;$("f-huesped").value="";$("f-pax").value=1;$("f-hotel").value=HOTELS[0];
+  setTipo("Llegada");$("f-hora").value="";$("f-estado").value="Pendiente";$("f-notas").value="";
   $("f-huesped").focus();
 }
 function editRow(id){
-  const r=data.find(x=>x.id===id); if(!r)return;
-  editId=id; $("form").classList.add("open");
-  $("f-fecha").value=r.fecha;$("f-huesped").value=r.huesped;$("f-pax").value=r.pax;$("f-hotel").value=r.hotel;
-  setTipo(r.tipo);$("f-hora").value=r.hora;$("f-estado").value=r.estado;$("f-notas").value=r.notas||"";
+  const r=data.find(x=>String(x.id)===String(id));if(!r)return;
+  editId=id;$("form").classList.add("open");
+  $("f-fecha").value=normalizeDate(r.fecha);$("f-huesped").value=r.huesped;$("f-pax").value=r.pax;$("f-hotel").value=r.hotel;
+  setTipo(r.tipo);$("f-hora").value=normalizeTime(r.hora);$("f-estado").value=r.estado;$("f-notas").value=r.notas||"";
   $("form").scrollIntoView({behavior:"smooth",block:"center"});
 }
 async function delRow(id){
-  const r=data.find(x=>x.id===id); if(!r)return;
-  if(!confirm("¿Borrar el traslado de "+r.huesped+"?")) return;
+  const r=data.find(x=>String(x.id)===String(id));if(!r)return;
+  if(!confirm("¿Borrar el traslado de "+r.huesped+"?"))return;
   try{
-    if(LIVE) await api({action:"delete",id:id});
-    data=data.filter(x=>x.id!==id); persistDemo(); render();
-    if(LIVE) setStatus("✓ Traslado borrado de la hoja.");
-  }catch(e){ setStatus("No se pudo borrar: "+e.message,true); }
+    if(LIVE)await api({action:"delete",id:id});
+    data=data.filter(x=>String(x.id)!==String(id));persistDemo();render();
+    if(LIVE)setStatus("✓ Traslado borrado de la hoja.");
+  }catch(e){setStatus("No se pudo borrar: "+e.message,true);}
 }
 async function saveRow(){
-  if(busy) return;
+  if(busy)return;
   const huesped=$("f-huesped").value.trim();
   if(!huesped){$("f-huesped").focus();return;}
   if(!$("f-hora").value){$("f-hora").focus();return;}
   const isEdit=!!editId;
-  const row={id:editId||String(Date.now()),fecha:$("f-fecha").value||dateInput.value,huesped:huesped,
-    hotel:$("f-hotel").value,tipo:tipo,hora:$("f-hora").value,pax:Math.max(1,+$("f-pax").value||1),
-    estado:$("f-estado").value,notas:$("f-notas").value.trim()};
-  busy=true; const btn=$("saveBtn"); btn.textContent="Guardando…"; btn.disabled=true;
+  const row={
+    id:editId||String(Date.now()),
+    fecha:$("f-fecha").value||dateInput.value,
+    huesped:huesped,
+    hotel:$("f-hotel").value,
+    tipo:tipo,
+    hora:$("f-hora").value,
+    pax:Math.max(1,Number($("f-pax").value)||1),
+    estado:$("f-estado").value,
+    notas:$("f-notas").value.trim()
+  };
+  busy=true;const btn=$("saveBtn");btn.textContent="Guardando…";btn.disabled=true;
   try{
-    if(LIVE) await api({action:isEdit?"update":"add",row:row});
-    if(isEdit) data=data.map(x=>x.id===row.id?row:x); else data.push(row);
-    persistDemo();
-    $("form").classList.remove("open"); dateInput.value=row.fecha; render();
-    if(LIVE) setStatus("✓ Guardado en tu hoja de Google Sheets.");
-  }catch(e){ setStatus("No se pudo guardar: "+e.message,true); }
-  finally{ busy=false; btn.textContent="Guardar traslado"; btn.disabled=false; editId=null; }
+    if(LIVE)await api({action:isEdit?"update":"add",row:row});
+    if(isEdit)data=data.map(x=>String(x.id)===String(row.id)?row:x);else data.push(row);
+    persistDemo();$("form").classList.remove("open");dateInput.value=row.fecha;render();
+    if(LIVE)setStatus("✓ Guardado en tu hoja de Google Sheets.");
+  }catch(e){setStatus("No se pudo guardar: "+e.message,true);}
+  finally{busy=false;btn.textContent="Guardar traslado";btn.disabled=false;editId=null;}
 }
 function exportCSV(){
   const sel=dateInput.value;
-  const rows=data.filter(r=>r.fecha===sel).sort((a,b)=>a.hora.localeCompare(b.hora));
+  const rows=data.filter(r=>normalizeDate(r.fecha)===sel).sort((a,b)=>normalizeTime(a.hora).localeCompare(normalizeTime(b.hora)));
   const head=["Fecha","Hora recogida","Huésped","Hotel","Destino","Pax","Estado","Notas"];
-  const lines=[head.join(",")].concat(rows.map(r=>[r.fecha,r.hora,r.huesped,r.hotel,destino(r),r.pax,r.estado,(r.notas||"")].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")));
+  const lines=[head.join(",")].concat(rows.map(r=>[r.fecha,r.hora,r.huesped,r.hotel,destino(r),r.pax,r.estado,r.notas||""].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")));
   const blob=new Blob(["\ufeff"+lines.join("\n")],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="traslados_"+sel+".csv";a.click();
 }
 
-// ---------- wiring ----------
 dateInput.value=todayStr();
 function shift(d){const dt=new Date(dateInput.value+"T12:00");dt.setDate(dt.getDate()+d);dateInput.value=dt.toISOString().slice(0,10);render();}
-$("prev").onclick=()=>shift(-1); $("next").onclick=()=>shift(1);
+$("prev").onclick=()=>shift(-1);$("next").onclick=()=>shift(1);
 $("today").onclick=()=>{dateInput.value=todayStr();render();};
 dateInput.onchange=render;
 $("toggleForm").onclick=()=>{const f=$("form");f.classList.contains("open")?f.classList.remove("open"):openForm();};
@@ -361,9 +424,8 @@ $("saveBtn").onclick=saveRow;
 $("exportBtn").onclick=exportCSV;
 $("refreshBtn").onclick=async()=>{await load();render();};
 document.querySelectorAll("#seg button").forEach(b=>b.onclick=()=>setTipo(b.dataset.t));
-window.editRow=editRow; window.delRow=delRow;
-
-(async()=>{ await load(); render(); })();
+window.editRow=editRow;window.delRow=delRow;
+(async()=>{await load();render();})();
 </script>
 </body>
 </html>
