@@ -166,7 +166,7 @@
           <button type="button" data-t="Salida">Salida</button>
         </div>
       </div>
-      <div class="field"><label>Hora recogida</label><input type="time" id="f-hora"></div>
+      <div class="field"><label>Hora recogida</label><select id="f-hora"></select></div>
       <div class="field"><label>Estado</label>
         <select id="f-estado">
           <option>Pendiente</option><option>Confirmado</option><option>En ruta</option><option>Completado</option><option>Cancelado</option>
@@ -200,6 +200,10 @@ const TOKEN = "hdp_53267e0e5bd29126aa70e5ee32354616";
 const LIVE = !!API_URL && !API_URL.includes("PEGA_AQUI");
 const DEMO_MSG = "Modo demo: revisá API_URL/TOKEN. Por ahora se guarda solo en este navegador.";
 const HOTELS=["Casona de la Isla","Casona del Lago","Hotel Petén","Casa Turquesa","Casazul","Villa del Lago"];
+const HORARIOS={
+  Llegada:["06:30","10:00","14:00","17:15","20:15"],
+  Salida:["05:45","08:30","12:45","15:45","18:45"]
+};
 const KEY="hdp_traslados_v1";
 let data=[], editId=null, tipo="Llegada", busy=false;
 
@@ -231,6 +235,28 @@ function normalizeTime(v){
   const d=new Date(s);
   if(!isNaN(d.getTime()))return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
   return s;
+}
+
+function setHoraOptions(selectedHora=""){
+  const select=$("f-hora");
+  const fixed=HORARIOS[tipo]||[];
+  const selected=normalizeTime(selectedHora);
+  const times=selected&&!fixed.includes(selected)?[selected,...fixed]:fixed.slice();
+  select.innerHTML="";
+
+  const empty=document.createElement("option");
+  empty.value="";
+  empty.textContent="Selecciona horario";
+  select.appendChild(empty);
+
+  times.forEach(h=>{
+    const option=document.createElement("option");
+    option.value=h;
+    option.textContent=h+(selected===h&&!fixed.includes(h)?" (actual)":"");
+    select.appendChild(option);
+  });
+
+  select.value=selected&&times.includes(selected)?selected:"";
 }
 
 function api(payload=null){
@@ -355,7 +381,11 @@ function render(){
   }).join("");
 }
 
-function setTipo(t){tipo=t;document.querySelectorAll("#seg button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));}
+function setTipo(t,selectedHora=""){
+  tipo=t;
+  document.querySelectorAll("#seg button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
+  setHoraOptions(selectedHora);
+}
 function openForm(){
   $("form").classList.add("open");editId=null;
   $("f-fecha").value=dateInput.value;$("f-huesped").value="";$("f-pax").value=1;$("f-hotel").value=HOTELS[0];
@@ -366,7 +396,7 @@ function editRow(id){
   const r=data.find(x=>String(x.id)===String(id));if(!r)return;
   editId=id;$("form").classList.add("open");
   $("f-fecha").value=normalizeDate(r.fecha);$("f-huesped").value=r.huesped;$("f-pax").value=r.pax;$("f-hotel").value=r.hotel;
-  setTipo(r.tipo);$("f-hora").value=normalizeTime(r.hora);$("f-estado").value=r.estado;$("f-notas").value=r.notas||"";
+  setTipo(r.tipo,normalizeTime(r.hora));$("f-estado").value=r.estado;$("f-notas").value=r.notas||"";
   $("form").scrollIntoView({behavior:"smooth",block:"center"});
 }
 async function delRow(id){
