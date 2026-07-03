@@ -72,6 +72,7 @@
   .field input:focus,.field select:focus{outline:none;border-color:var(--gold)}
   .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
   .seg button{flex:1;background:var(--panel2);border:none;color:var(--muted);padding:10px;font-family:inherit;font-weight:600;font-size:13px;cursor:pointer;transition:.15s}
+  .seg.route button{min-height:42px;line-height:1.2}
   .seg button.on{color:#1a1304}
   .seg button.on[data-t="Llegada"]{background:var(--teal)}
   .seg button.on[data-t="Salida"]{background:var(--coral)}
@@ -128,15 +129,15 @@
 
   <section class="dash">
     <div class="stats">
-      <div class="stat entran"><span class="n" id="s-entran">0</span><span class="l">Entran hoy</span><span class="sub">llegan al hotel</span></div>
-      <div class="stat salen"><span class="n" id="s-salen">0</span><span class="l">Salen hoy</span><span class="sub">van al aeropuerto</span></div>
+      <div class="stat entran"><span class="n" id="s-entran">0</span><span class="l">Aeropuerto-Flores</span><span class="sub">hacia Flores</span></div>
+      <div class="stat salen"><span class="n" id="s-salen">0</span><span class="l">Flores-Aeropuerto</span><span class="sub">hacia Aeropuerto</span></div>
       <div class="stat"><span class="n" id="s-tras">0</span><span class="l">Traslados</span><span class="sub">programados</span></div>
       <div class="stat prox"><span class="n" id="s-prox">—</span><span class="l">Próxima recogida</span><span class="sub" id="s-prox-sub">sin pendientes</span></div>
     </div>
     <div class="timeline-h">
       <span>Línea del día · 5:00 – 23:00</span>
-      <span class="legend"><span class="dot" style="background:var(--teal)"></span>Llegada</span>
-      <span class="legend"><span class="dot" style="background:var(--coral)"></span>Salida</span>
+      <span class="legend"><span class="dot" style="background:var(--teal)"></span>Aeropuerto hacia Flores</span>
+      <span class="legend"><span class="dot" style="background:var(--coral)"></span>Flores hacia Aeropuerto</span>
     </div>
     <div class="ribbon" id="ribbon"></div>
   </section>
@@ -160,10 +161,10 @@
           <option>Casa Turquesa</option><option>Casazul</option><option>Villa del Lago</option>
         </select>
       </div>
-      <div class="field"><label>Tipo</label>
-        <div class="seg" id="seg">
-          <button type="button" data-t="Llegada" class="on">Llegada</button>
-          <button type="button" data-t="Salida">Salida</button>
+      <div class="field wide"><label>Destino</label>
+        <div class="seg route" id="seg">
+          <button type="button" data-t="Llegada" class="on">Aeropuerto hacia Flores</button>
+          <button type="button" data-t="Salida">Flores hacia Aeropuerto</button>
         </div>
       </div>
       <div class="field"><label>Hora recogida</label><select id="f-hora"></select></div>
@@ -201,8 +202,12 @@ const LIVE = !!API_URL && !API_URL.includes("PEGA_AQUI");
 const DEMO_MSG = "Modo demo: revisá API_URL/TOKEN. Por ahora se guarda solo en este navegador.";
 const HOTELS=["Casona de la Isla","Casona del Lago","Hotel Petén","Casa Turquesa","Casazul","Villa del Lago"];
 const HORARIOS={
-  Llegada:["06:30","10:00","14:00","17:15","20:15"],
-  Salida:["05:45","08:30","12:45","15:45","18:45"]
+  Llegada:["06:45","10:00","14:00","17:15","19:00","20:15"],
+  Salida:["05:45","08:30","12:45","15:45","18:30"]
+};
+const RUTAS={
+  Llegada:"Aeropuerto hacia Flores",
+  Salida:"Flores hacia Aeropuerto"
 };
 const KEY="hdp_traslados_v1";
 let data=[], editId=null, tipo="Llegada", busy=false;
@@ -211,7 +216,7 @@ const $=id=>document.getElementById(id);
 const dateInput=$("date");
 
 function todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
-function destino(row){return row.tipo==="Salida" ? "Aeropuerto FRS" : row.hotel;}
+function destino(row){return RUTAS[row.tipo]||row.tipo||"";}
 function fmtFecha(s){if(!s)return"";const p=String(s).split("-");return p.length===3?p[2]+"/"+p[1]:s;}
 function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 function attr(s){return String(s??"").replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;").replace(/[<>]/g,"");}
@@ -355,7 +360,7 @@ function render(){
     const el=document.createElement("div");
     el.className="pt "+(r.tipo==="Llegada"?"arr":"dep");
     el.style.left=pct(mins)+"%";el.style.top=(r.tipo==="Llegada"?32:68)+"%";
-    el.title=r.hora+" · "+r.huesped+" · "+r.pax+" pax · "+(r.tipo==="Llegada"?"llega a "+r.hotel:"sale al aeropuerto");
+    el.title=r.hora+" · "+r.huesped+" · "+r.pax+" pax · "+destino(r);
     rb.appendChild(el);
   });
 
