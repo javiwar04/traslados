@@ -45,9 +45,19 @@ function readAll_() {
   return rows;
 }
 
-function json_(obj) {
+function output_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function response_(e, obj) {
+  const callback = e && e.parameter && e.parameter.callback;
+  if (callback && /^[A-Za-z_$][0-9A-Za-z_$]*$/.test(callback)) {
+    return ContentService
+      .createTextOutput(callback + '(' + JSON.stringify(obj) + ');')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return output_(obj);
 }
 
 function rowToArray_(row) {
@@ -72,23 +82,23 @@ function handleWrite_(body) {
     const sh = getSheet_();
     if (body.action === 'add') {
       sh.appendRow(rowToArray_(body.row));
-      return json_({ ok: true, row: body.row });
+      return { ok: true, row: body.row };
     }
     if (body.action === 'update') {
       const idx = findRowIndex_(sh, body.row.id);
-      if (idx === -1) return json_({ ok: false, error: 'No encontré ese traslado' });
+      if (idx === -1) return { ok: false, error: 'No encontré ese traslado' };
       sh.getRange(idx, 1, 1, HEADERS.length).setValues([rowToArray_(body.row)]);
-      return json_({ ok: true, row: body.row });
+      return { ok: true, row: body.row };
     }
     if (body.action === 'delete') {
       const idx = findRowIndex_(sh, body.id);
-      if (idx === -1) return json_({ ok: false, error: 'No encontré ese traslado' });
+      if (idx === -1) return { ok: false, error: 'No encontré ese traslado' };
       sh.deleteRow(idx);
-      return json_({ ok: true });
+      return { ok: true };
     }
-    return json_({ ok: false, error: 'Acción desconocida' });
+    return { ok: false, error: 'Acción desconocida' };
   } catch (err) {
-    return json_({ ok: false, error: String(err) });
+    return { ok: false, error: String(err) };
   } finally {
     lock.releaseLock();
   }
@@ -96,20 +106,20 @@ function handleWrite_(body) {
 
 // Lectura, y también escritura cuando llega ?payload= (camino confiable para el navegador)
 function doGet(e) {
-  if (!authed_(e, null)) return json_({ ok: false, error: 'No autorizado' });
+  if (!authed_(e, null)) return response_(e, { ok: false, error: 'No autorizado' });
   if (e && e.parameter && e.parameter.payload) {
-    return handleWrite_(JSON.parse(e.parameter.payload));
+    return response_(e, handleWrite_(JSON.parse(e.parameter.payload)));
   }
-  return json_({ ok: true, data: readAll_() });
+  return response_(e, { ok: true, data: readAll_() });
 }
 
 // Se mantiene por compatibilidad si el POST sí llega
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
-    if (!authed_(e, body)) return json_({ ok: false, error: 'No autorizado' });
-    return handleWrite_(body);
+    if (!authed_(e, body)) return response_(e, { ok: false, error: 'No autorizado' });
+    return response_(e, handleWrite_(body));
   } catch (err) {
-    return json_({ ok: false, error: String(err) });
+    return response_(e, { ok: false, error: String(err) });
   }
 }
