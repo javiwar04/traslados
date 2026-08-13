@@ -36,11 +36,46 @@ function readAll_() {
   for (let i = 1; i < values.length; i++) {
     const r = values[i];
     if (!r[0]) continue;
-    rows.push({
-      id: String(r[0]), fecha: String(r[1]), huesped: String(r[2]), hotel: String(r[3]),
-      tipo: String(r[4]), hora: String(r[5]), pax: Number(r[6]) || 1,
-      estado: String(r[7]), notas: String(r[8] || '')
-    });
+    rows.push(rowFromArray_(r));
+  }
+  return rows;
+}
+
+function normalizeDate_(value) {
+  if (!value) return '';
+  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+  const s = String(value).trim();
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return s;
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return m[3] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0');
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return s;
+}
+
+function rowFromArray_(r) {
+  return {
+    id: String(r[0]), fecha: normalizeDate_(r[1]), huesped: String(r[2]), hotel: String(r[3]),
+    tipo: String(r[4]), hora: String(r[5]), pax: Number(r[6]) || 1,
+    estado: String(r[7]), notas: String(r[8] || '')
+  };
+}
+
+function readByDate_(fecha) {
+  const target = normalizeDate_(fecha);
+  if (!target) return readAll_();
+  const sh = getSheet_();
+  const last = sh.getLastRow();
+  if (last < 2) return [];
+  const dates = sh.getRange(2, 2, last - 1, 1).getValues();
+  const rows = [];
+  for (let i = 0; i < dates.length; i++) {
+    if (normalizeDate_(dates[i][0]) !== target) continue;
+    const r = sh.getRange(i + 2, 1, 1, HEADERS.length).getValues()[0];
+    if (r[0]) rows.push(rowFromArray_(r));
   }
   return rows;
 }
@@ -110,7 +145,8 @@ function doGet(e) {
   if (e && e.parameter && e.parameter.payload) {
     return response_(e, handleWrite_(JSON.parse(e.parameter.payload)));
   }
-  return response_(e, { ok: true, data: readAll_() });
+  const fecha = e && e.parameter && e.parameter.fecha;
+  return response_(e, { ok: true, data: fecha ? readByDate_(fecha) : readAll_() });
 }
 
 // Se mantiene por compatibilidad si el POST sí llega

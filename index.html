@@ -266,7 +266,7 @@ function setHoraOptions(selectedHora=""){
   select.value=selected&&times.includes(selected)?selected:"";
 }
 
-function api(payload=null){
+function api(payload=null,query={}){
   return new Promise((resolve,reject)=>{
     if(!LIVE){reject(new Error("API_URL no configurada"));return;}
     const callbackName="__hdp_cb_"+Date.now()+"_"+Math.random().toString(36).slice(2);
@@ -274,6 +274,7 @@ function api(payload=null){
     const params=new URLSearchParams();
     params.set("token",TOKEN);
     params.set("callback",callbackName);
+    Object.keys(query||{}).forEach(k=>{if(query[k])params.set(k,query[k]);});
     if(payload)params.set("payload",JSON.stringify(payload));
 
     const script=document.createElement("script");
@@ -318,11 +319,11 @@ function api(payload=null){
   });
 }
 
-async function load(){
+async function load(fecha=dateInput.value){
   if(LIVE){
     try{
       setStatus("Cargando desde Google Sheets…");
-      const j=await api();
+      const j=await api(null,{fecha:normalizeDate(fecha)});
       data=(j.data||[]).map(r=>({
         id:String(r.id||""),
         fecha:normalizeDate(r.fecha),
@@ -352,6 +353,10 @@ async function load(){
   setStatus(DEMO_MSG);
 }
 function persistDemo(){if(!LIVE){try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}}}
+async function refreshDay(){
+  await load(dateInput.value);
+  render();
+}
 
 function pct(mins){return Math.max(2,Math.min(98,(mins-300)/(1380-300)*100));}
 function render(){
@@ -446,10 +451,15 @@ async function saveRow(){
   };
   busy=true;const btn=$("saveBtn");btn.textContent="Guardando…";btn.disabled=true;
   try{
-    if(LIVE)await api({action:isEdit?"update":"add",row:row});
-    if(isEdit)data=data.map(x=>String(x.id)===String(row.id)?row:x);else data.push(row);
-    persistDemo();$("form").classList.remove("open");dateInput.value=row.fecha;render();
-    if(LIVE)setStatus("✓ Guardado en tu hoja de Google Sheets.");
+    if(LIVE){
+      await api({action:isEdit?"update":"add",row:row});
+      $("form").classList.remove("open");dateInput.value=row.fecha;
+      await load(row.fecha);render();
+      setStatus("✓ Guardado en tu hoja de Google Sheets.");
+    }else{
+      if(isEdit)data=data.map(x=>String(x.id)===String(row.id)?row:x);else data.push(row);
+      persistDemo();$("form").classList.remove("open");dateInput.value=row.fecha;render();
+    }
   }catch(e){setStatus("No se pudo guardar: "+e.message,true);}
   finally{busy=false;btn.textContent="Guardar traslado";btn.disabled=false;editId=null;}
 }
@@ -571,19 +581,19 @@ function exportPDF(){
 }
 
 dateInput.value=todayStr();
-function shift(d){const dt=new Date(dateInput.value+"T12:00");dt.setDate(dt.getDate()+d);dateInput.value=dt.toISOString().slice(0,10);render();}
+function shift(d){const dt=new Date(dateInput.value+"T12:00");dt.setDate(dt.getDate()+d);dateInput.value=dt.toISOString().slice(0,10);refreshDay();}
 $("prev").onclick=()=>shift(-1);$("next").onclick=()=>shift(1);
-$("today").onclick=()=>{dateInput.value=todayStr();render();};
-dateInput.onchange=render;
+$("today").onclick=()=>{dateInput.value=todayStr();refreshDay();};
+dateInput.onchange=refreshDay;
 $("toggleForm").onclick=()=>{const f=$("form");f.classList.contains("open")?f.classList.remove("open"):openForm();};
 $("cancelBtn").onclick=()=>{$("form").classList.remove("open");editId=null;};
 $("saveBtn").onclick=saveRow;
 $("excelBtn").onclick=exportExcel;
 $("pdfBtn").onclick=exportPDF;
-$("refreshBtn").onclick=async()=>{await load();render();};
+$("refreshBtn").onclick=refreshDay;
 document.querySelectorAll("#seg button").forEach(b=>b.onclick=()=>setTipo(b.dataset.t));
 window.editRow=editRow;window.delRow=delRow;
-(async()=>{await load();render();})();
+refreshDay();
 </script>
 </body>
 </html>
